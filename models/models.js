@@ -2,6 +2,7 @@
 
 const mongoose = require('mongoose');
 const { Schema } = mongoose;
+const { ObjectId } = mongoose.Types;
 
 const issueSchema = new Schema({
   issue_title: { type: String, required: true },
@@ -23,6 +24,7 @@ const issueModel = mongoose.model('issues', issueSchema);
 const projectModel = mongoose.model('project', projectSchema);
 
 module.exports = {
+  ObjectId,
   issueModel,
   projectModel,
 };
