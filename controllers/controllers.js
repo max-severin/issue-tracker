@@ -2,6 +2,53 @@
 
 const { issueModel, projectModel } = require('../models/models');
 
+const createIssue = async (req, res) => {
+  try {
+    const project = req.params.project;
+    const { issue_title, issue_text, created_by, assigned_to, status_text } = req.body;
+
+    if (!issue_title || !issue_text || !created_by) {
+      return res.status(200).json({
+        error: 'required field(s) missing',
+      });
+    }
+
+    const now = Date.now();
+
+    const issueNew = new issueModel({
+      issue_title: issue_title,
+      issue_text: issue_text,
+      created_on: now,
+      updated_on: now,
+      created_by: created_by,
+      assigned_to: assigned_to ? assigned_to : '',
+      status_text: status_text ? status_text : '',
+    });
+
+    let projectObj = await projectModel.findOne({ name: project });
+
+    if (projectObj) {
+      projectObj.issues.push(issueNew);
+    } else {
+      projectObj = new projectModel({
+        name: project,
+        issues: [ issueNew ]
+      });
+    }
+    
+    await projectObj.save();
+
+    res.status(200).json(issueNew);
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      error,
+      message: 'Server Error',
+    });
+  }
+};
+
 const getIssues = async (req, res) => {
   try {
     const project = req.params.project;
@@ -51,54 +98,58 @@ const getIssues = async (req, res) => {
   }
 };
 
-const createIssue = async (req, res) => {
-  try {
-    const project = req.params.project;
-    const { issue_title, issue_text, created_by, assigned_to, status_text } = req.body;
+const updateIssue = async (req, res) => {
+  const project = req.params.project;
+  const { _id, ...issueFields } = req.body;
+  let setObj = {};
 
-    if (!issue_title || !issue_text || !created_by) {
-      return res.status(200).json({
-        error: 'required field(s) missing',
-      });
-    }
-
-    const now = Date.now();
-
-    const issueNew = new issueModel({
-      issue_title: issue_title,
-      issue_text: issue_text,
-      created_on: now,
-      updated_on: now,
-      created_by: created_by,
-      assigned_to: assigned_to ? assigned_to : '',
-      status_text: status_text ? status_text : '',
+  if (!_id) {
+    res.status(200).json({
+      error: 'missing _id',
     });
+  }
 
-    let projectObj = await projectModel.findOne({ name: project });
+  if (Object.keys(issueFields).length === 0) {
+    res.status(200).json({
+      error: 'no update field(s) sent',
+      _id,
+    });
+  }    
 
-    if (projectObj) {
-      projectObj.issues.push(issueNew);
-    } else {
-      projectObj = new projectModel({
-        name: project,
-        issues: [ issueNew ]
-      });
+  for (const key in issueFields) {
+    let value = issueFields[key];
+
+    if (key === 'open') {
+      value = (value === 'true');
     }
+
+    if ([ 'issue_title', 'issue_text', 'created_by', 'assigned_to', 'status_text', 'open' ].includes(key)) {          
+      setObj[`issues.$.${key}`] = value;
+    }
+  }
+
+  setObj['issues.$.updated_on'] = new Date();
+
+  const issueUpdated = await projectModel.findOneAndUpdate(
+    { name: project, 'issues._id': _id },
+    { $set: setObj },
+  ).catch((error) => {
+    res.status(200).json({
+      error: 'could not update',
+      _id,
+    });
+  });
     
-    await projectObj.save();
-
-    res.status(200).json(issueNew);
-  } catch (error) {
-    console.error(error);
-
-    res.status(500).json({
-      error,
-      message: 'Server Error',
+  if (issueUpdated) {
+    res.status(200).json({
+      result: 'successfully updated',
+      _id: _id,
     });
   }
 };
 
 module.exports = {
-  getIssues,
   createIssue,
+  getIssues,
+  updateIssue,
 };
