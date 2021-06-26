@@ -1,15 +1,12 @@
 'use strict';
 
-const { createIssue } = require('../controllers/controllers');
+const { getIssues, createIssue } = require('../controllers/controllers');
 
 module.exports = function (app) {
 
   app.route('/api/issues/:project')
   
-    .get(function (req, res){
-      let project = req.params.project;
-      
-    })
+    .get(getIssues)
     
     .post(createIssue)
     

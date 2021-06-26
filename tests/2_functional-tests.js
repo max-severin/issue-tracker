@@ -6,6 +6,8 @@ const server = require('../server');
 chai.use(chaiHttp);
 
 suite('Functional Tests', function() {
+  let specialIssueId;
+
   suite('POST request to /api/issues/{project}', function () {
     test('Create an issue with every field', function (done) {
       const testData = {
@@ -21,37 +23,25 @@ suite('Functional Tests', function() {
         .post('/api/issues/apitest')
         .send(testData)
         .end(function (err, res) {
-          assert.equal(res.status, 200);
-          
-          assert.nestedInclude(res.body, testData);
+          assert.equal(res.status, 200);  
 
+          assert.nestedInclude(res.body, testData);
           assert.property(res.body, '_id');
           assert.isNotEmpty(res.body._id);
-
           assert.property(res.body, 'issue_title');
-          // assert.equal(res.body.issue_title, 'Fix error in posting data');
-
           assert.property(res.body, 'issue_text');
-          // assert.equal(res.body.issue_text, 'When we post data it has an error.');
-
           assert.property(res.body, 'created_on');
           assert.isNotEmpty(res.body.created_on);
-
           assert.property(res.body, 'updated_on');
           assert.isNotEmpty(res.body.created_on);
-
           assert.property(res.body, 'created_by');
-          // assert.equal(res.body.created_by, 'Max');
-
           assert.property(res.body, 'assigned_to');
-          // assert.equal(res.body.assigned_to, 'Max');
-
           assert.property(res.body, 'open');
           assert.isBoolean(res.body.open);
           assert.isTrue(res.body.open);
-
           assert.property(res.body, 'status_text');
-          // assert.equal(res.body.status_text, 'In QA');
+
+          specialIssueId = res.body._id;
 
           done();
         });
@@ -72,32 +62,20 @@ suite('Functional Tests', function() {
           assert.equal(res.status, 200);
           
           assert.nestedInclude(res.body, testData);
-
           assert.property(res.body, '_id');
           assert.isNotEmpty(res.body._id);
-
           assert.property(res.body, 'issue_title');
-          // assert.equal(res.body.issue_title, 'Fix error in posting data');
-
           assert.property(res.body, 'issue_text');
-          // assert.equal(res.body.issue_text, 'When we post data it has an error.');
-
           assert.property(res.body, 'created_on');
           assert.isNotEmpty(res.body.created_on);
-
           assert.property(res.body, 'updated_on');
           assert.isNotEmpty(res.body.created_on);
-
           assert.property(res.body, 'created_by');
-          // assert.equal(res.body.created_by, 'Max');
-
           assert.property(res.body, 'assigned_to');
           assert.isEmpty(res.body.assigned_to);
-
           assert.property(res.body, 'open');
           assert.isBoolean(res.body.open);
           assert.isTrue(res.body.open);
-
           assert.property(res.body, 'status_text');
           assert.isEmpty(res.body.status_text);
           
@@ -126,41 +104,100 @@ suite('Functional Tests', function() {
   });
 
   suite('GET request to /api/issues/{project}', function () {
-    // test('View issues on a project', function (done) {
-    //   chai
-    //     .request(server)
-    //     .get('____')
-    //     .query({ ____ })
-    //     .end(function (err, res) {
-    //       assert.equal(res.status, 200);
-    //       // ____
-    //       done();
-    //     });
-    // });
+    test('View issues on a project', function (done) {
+      chai
+        .request(server)
+        .get('/api/issues/apitest')
+        .end(function (err, res) {
+          assert.equal(res.status, 200);          
+          
+          assert.isArray(res.body);
+          assert.isAbove(res.body.length, 0);
 
-    // test('View issues on a project with one filter', function (done) {
-    //   chai
-    //     .request(server)
-    //     .get('____')
-    //     .query({ ____ })
-    //     .end(function (err, res) {
-    //       assert.equal(res.status, 200);
-    //       // ____
-    //       done();
-    //     });
-    // });
+          res.body.forEach(function (issue) {          
+            assert.property(issue, '_id');
+            assert.property(issue, 'issue_title');
+            assert.property(issue, 'issue_text');
+            assert.property(issue, 'created_on');
+            assert.property(issue, 'updated_on');
+            assert.property(issue, 'created_by');
+            assert.property(issue, 'assigned_to');
+            assert.property(issue, 'open');
+            assert.isBoolean(issue.open);
+            assert.property(issue, 'status_text');
+          });
 
-    // test('View issues on a project with multiple filters', function (done) {
-    //   chai
-    //     .request(server)
-    //     .get('____')
-    //     .query({ ____ })
-    //     .end(function (err, res) {
-    //       assert.equal(res.status, 200);
-    //       // ____
-    //       done();
-    //     });
-    // });
+          done();
+        });
+    });
+
+    test('View issues on a project with one filter', function (done) {
+      const filterData = {
+        open: true,
+      };
+
+      chai
+        .request(server)
+        .get('/api/issues/apitest')
+        .query(filterData)
+        .end(function (err, res) {
+          assert.equal(res.status, 200);          
+          
+          assert.isArray(res.body);
+          assert.isAbove(res.body.length, 0);
+
+          res.body.forEach(function (issue) {          
+            assert.property(issue, '_id');
+            assert.property(issue, 'issue_title');
+            assert.property(issue, 'issue_text');
+            assert.property(issue, 'created_on');
+            assert.property(issue, 'updated_on');
+            assert.property(issue, 'created_by');
+            assert.property(issue, 'assigned_to');
+            assert.property(issue, 'open');
+            assert.isBoolean(issue.open);
+            assert.isTrue(issue.open);
+            assert.property(issue, 'status_text');
+          });
+
+          done();
+        });
+    });
+
+    test('View issues on a project with multiple filters', function (done) {
+      const filterData = {
+        open: true,
+        assigned_to: 'Max'
+      };
+
+      chai
+        .request(server)
+        .get('/api/issues/apitest')
+        .query(filterData)
+        .end(function (err, res) {
+          assert.equal(res.status, 200);          
+          
+          assert.isArray(res.body);
+          assert.isAbove(res.body.length, 0);
+
+          res.body.forEach(function (issue) {     
+            assert.nestedInclude(issue, filterData);     
+            assert.property(issue, '_id');
+            assert.property(issue, 'issue_title');
+            assert.property(issue, 'issue_text');
+            assert.property(issue, 'created_on');
+            assert.property(issue, 'updated_on');
+            assert.property(issue, 'created_by');
+            assert.property(issue, 'assigned_to');
+            assert.property(issue, 'open');
+            assert.isBoolean(issue.open);
+            assert.isTrue(issue.open);
+            assert.property(issue, 'status_text');
+          });
+          
+          done();
+        });
+    });
   });
 
   suite('PUT request to /api/issues/{project}', function () {
