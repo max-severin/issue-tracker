@@ -316,40 +316,65 @@ suite('Functional Tests', function() {
   });
 
   suite('DELETE request to /api/issues/{project}', function () {
-    // test('Delete an issue', function (done) {
-    //   chai
-    //     .request(server)
-    //     .get('____')
-    //     .query({ ____ })
-    //     .end(function (err, res) {
-    //       assert.equal(res.status, 200);
-    //       // ____
-    //       done();
-    //     });
-    // });
+    test('Delete an issue', function (done) {
+      const testData = {
+        _id: specialIssueId,
+      };
 
-    // test('Delete an issue with an invalid _id', function (done) {
-    //   chai
-    //     .request(server)
-    //     .get('____')
-    //     .query({ ____ })
-    //     .end(function (err, res) {
-    //       assert.equal(res.status, 200);
-    //       // ____
-    //       done();
-    //     });
-    // });
+      chai
+        .request(server)
+        .delete('/api/issues/apitest')
+        .send(testData)
+        .end(function (err, res) {
+          assert.equal(res.status, 200);
 
-    // test('Delete an issue with missing _id', function (done) {
-    //   chai
-    //     .request(server)
-    //     .get('____')
-    //     .query({ ____ })
-    //     .end(function (err, res) {
-    //       assert.equal(res.status, 200);
-    //       // ____
-    //       done();
-    //     });
-    // });
+          assert.property(res.body, '_id');
+          assert.equal(res.body._id, specialIssueId);
+          assert.property(res.body, 'result');
+          assert.equal(res.body.result, 'successfully deleted');
+          
+          done();
+        });
+    });
+
+    test('Delete an issue with an invalid _id', function (done) {
+      const invalidId = 'TEST_ID';
+
+      const testData = {
+        _id: invalidId,
+      };
+
+      chai
+        .request(server)
+        .delete('/api/issues/apitest')
+        .send(testData)
+        .end(function (err, res) {
+          assert.equal(res.status, 200);
+
+          assert.property(res.body, '_id');
+          assert.equal(res.body._id, invalidId);
+          assert.property(res.body, 'error');
+          assert.equal(res.body.error, 'could not delete');
+
+          done();
+        });
+    });
+
+    test('Delete an issue with missing _id', function (done) {
+      const testData = {};
+
+      chai
+        .request(server)
+        .delete('/api/issues/apitest')
+        .send(testData)
+        .end(function (err, res) {
+          assert.equal(res.status, 200);
+          
+          assert.property(res.body, 'error');
+          assert.equal(res.body.error, 'missing _id');
+
+          done();
+        });
+    });
   });
 });

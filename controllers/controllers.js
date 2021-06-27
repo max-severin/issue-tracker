@@ -15,13 +15,13 @@ const createIssue = async (req, res) => {
 
   try {
     const issueNew = new issueModel({
-      issue_title: issue_title,
-      issue_text: issue_text,
-      created_on: now,
-      updated_on: now,
-      created_by: created_by,
+      issue_title,
+      issue_text,
+      created_by,
       assigned_to: assigned_to ? assigned_to : '',
       status_text: status_text ? status_text : '',
+      created_on: now,
+      updated_on: now,
     });
 
     let projectObj = await projectModel.findOne({ name: project });
@@ -43,7 +43,7 @@ const createIssue = async (req, res) => {
       error,
       message: 'Server Error',
     });
-  }
+  };
 };
 
 const getIssues = async (req, res) => {
@@ -92,7 +92,7 @@ const getIssues = async (req, res) => {
       error,
       message: 'Server Error',
     });
-  }
+  };
 };
 
 const updateIssue = async (req, res) => {
@@ -128,15 +128,16 @@ const updateIssue = async (req, res) => {
   setObj['issues.$.updated_on'] = new Date();
 
   try {
-    const issueUpdated = await projectModel.findOneAndUpdate(
+    const projectUpdated = await projectModel.findOneAndUpdate(
       { name: project, 'issues._id': new ObjectId(_id) },
       { $set: setObj },
+      { new: true }
     );
 
-    if (issueUpdated) {
+    if (projectUpdated) {
       return res.status(200).json({
         result: 'successfully updated',
-        _id: _id,
+        _id,
       });
     }
   } catch(error) {
@@ -144,11 +145,48 @@ const updateIssue = async (req, res) => {
       error: 'could not update',
       _id,
     });
+  };
+};
+
+const deleteIssue = async (req, res) => {
+  const project = req.params.project;
+  const { _id } = req.body;
+
+  if (!_id) {
+    return res.status(200).json({
+      error: 'missing _id',
+    });
   }
+
+  try {
+    const projectUpdated = await projectModel.findOneAndUpdate(
+      { name: project },
+      { $pull: {
+          issues: { 
+            _id: new ObjectId(_id)
+          } 
+      }},
+      { new: true }
+    );
+
+    if (projectUpdated) {
+      return res.status(200).json({
+        result: 'successfully deleted',
+        _id,
+      });
+    }
+  } catch(error) {
+    return res.status(200).json({
+      error: 'could not delete',
+      _id,
+    });
+  }
+
 };
 
 module.exports = {
   createIssue,
   getIssues,
   updateIssue,
+  deleteIssue,
 };
