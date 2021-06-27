@@ -1,6 +1,11 @@
 'use strict';
 
-const { createIssue, getIssues, updateIssue, deleteIssue } = require('../controllers/controllers');
+const { 
+  createIssue, 
+  getIssues, 
+  updateIssue, 
+  deleteIssue 
+} = require('../controllers/controllers');
 
 module.exports = function (app) {
 

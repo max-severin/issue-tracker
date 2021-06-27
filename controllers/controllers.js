@@ -3,9 +3,15 @@
 const { ObjectId, issueModel, projectModel } = require('../models/models');
 
 const createIssue = async (req, res) => {
+  const NOW = Date.now();
   const project = req.params.project;
-  const { issue_title, issue_text, created_by, assigned_to, status_text } = req.body;
-  const now = Date.now();
+  const { 
+    issue_title, 
+    issue_text, 
+    created_by, 
+    assigned_to, 
+    status_text 
+  } = req.body;
 
   if (!issue_title || !issue_text || !created_by) {
     return res.status(200).json({
@@ -20,26 +26,23 @@ const createIssue = async (req, res) => {
       created_by,
       assigned_to: assigned_to ? assigned_to : '',
       status_text: status_text ? status_text : '',
-      created_on: now,
-      updated_on: now,
+      created_on: NOW,
+      updated_on: NOW,
     });
 
-    let projectObj = await projectModel.findOne({ name: project });
+    const projectUpdated = await projectModel.findOneAndUpdate(
+      { name: project },
+      { $push: {
+          issues: issueNew
+      }},
+      { new: true, upsert: true }
+    );
 
-    if (projectObj) {
-      projectObj.issues.push(issueNew);
-    } else {
-      projectObj = new projectModel({
-        name: project,
-        issues: [ issueNew ]
-      });
+    if (projectUpdated) {
+      return res.status(200).json(issueNew);
     }
-    
-    await projectObj.save();
-
-    return res.status(200).json(issueNew);
   } catch (error) {
-    return res.status(500).json({
+    return res.status(200).json({
       error,
       message: 'Server Error',
     });
@@ -48,10 +51,10 @@ const createIssue = async (req, res) => {
 
 const getIssues = async (req, res) => {
   const project = req.params.project;
-  let filterObj = {};
+  let filter = {};
     
   if (Object.keys(req.query).length > 0) {
-    filterObj = { 
+    filter = { 
       issues: {
         $filter: {
           input: "$issues",
@@ -74,21 +77,21 @@ const getIssues = async (req, res) => {
         value = new ObjectId(value);
       }
       
-      filterObj.issues.$filter.cond.$and.push({ 
+      filter.issues.$filter.cond.$and.push({ 
         $eq: [`$$issues.${key}`, value]
       });
     }
   }
 
   try {
-    let projectObj = await projectModel.findOne(
+    let projectFound = await projectModel.findOne(
       { name: project },
-      filterObj
+      filter
     );
 
-    return res.status(200).json(projectObj.issues ? projectObj.issues : []);
+    return res.status(200).json(projectFound.issues ? projectFound.issues : []);
   } catch(error) {
-    return res.status(500).json({
+    return res.status(200).json({
       error,
       message: 'Server Error',
     });
@@ -96,9 +99,10 @@ const getIssues = async (req, res) => {
 };
 
 const updateIssue = async (req, res) => {
+  const NOW = Date.now();
   const project = req.params.project;
-  const { _id, ...issueFields } = req.body;
-  let setObj = {};
+  const { _id, ...bodyFields } = req.body;
+  let updateFields = {};
 
   if (!_id) {
     return res.status(200).json({
@@ -106,40 +110,45 @@ const updateIssue = async (req, res) => {
     });
   }
 
-  if (Object.keys(issueFields).length === 0) {
+  if (Object.keys(bodyFields).length === 0) {
     return res.status(200).json({
       error: 'no update field(s) sent',
       _id,
     });
   }    
 
-  for (const key in issueFields) {
-    let value = issueFields[key];
+  for (const key in bodyFields) {
+    let value = bodyFields[key];
 
     if (key === 'open') {
       value = (value === 'true');
     }
 
     if ([ 'issue_title', 'issue_text', 'created_by', 'assigned_to', 'status_text', 'open' ].includes(key)) {          
-      setObj[`issues.$.${key}`] = value;
+      updateFields[`issues.$.${key}`] = value;
     }
   }
 
-  setObj['issues.$.updated_on'] = new Date();
+  updateFields['issues.$.updated_on'] = NOW;
 
   try {
     const projectUpdated = await projectModel.findOneAndUpdate(
       { name: project, 'issues._id': new ObjectId(_id) },
-      { $set: setObj },
+      { $set: updateFields },
       { new: true }
     );
 
-    if (projectUpdated) {
+    if (!projectUpdated) {
       return res.status(200).json({
-        result: 'successfully updated',
+        error: 'could not update',
         _id,
       });
     }
+
+    return res.status(200).json({
+      result: 'successfully updated',
+      _id,
+    });
   } catch(error) {
     return res.status(200).json({
       error: 'could not update',
@@ -158,6 +167,13 @@ const deleteIssue = async (req, res) => {
     });
   }
 
+  if (Object.keys(req.body).length > 1) {
+    return res.status(200).json({
+      error: 'could not delete',
+      _id,
+    });
+  }  
+
   try {
     const projectUpdated = await projectModel.findOneAndUpdate(
       { name: project },
@@ -169,12 +185,17 @@ const deleteIssue = async (req, res) => {
       { new: true }
     );
 
-    if (projectUpdated) {
+    if (!projectUpdated) {
       return res.status(200).json({
         result: 'successfully deleted',
         _id,
       });
     }
+
+    return res.status(200).json({
+      result: 'successfully deleted',
+      _id,
+    });
   } catch(error) {
     return res.status(200).json({
       error: 'could not delete',
